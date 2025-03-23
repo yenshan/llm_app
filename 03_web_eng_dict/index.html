@@ -3,24 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>英単語辞書アプリ</title>
+  <title>英単語辞書アプリ (Solarized Light)</title>
   <!-- Markdown変換ライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
   <!-- シンタックスハイライト -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
   <style>
+    /* Solarized Light配色 */
     :root {
-      --sidebar-bg: #202123;
-      --sidebar-text: #FFFFFF;
-      --main-bg: #343541;
-      --user-bg: #343541;
-      --bot-bg: #444654;
-      --text-color: #ECECF1;
-      --border-color: #4D4D4F;
-      --input-bg: #40414F;
-      --button-color: #10A37F;
-      --button-hover: #0D8C6F;
+      --sidebar-bg: #eee8d5;       /* base2 */
+      --sidebar-text: #657b83;     /* base00 */
+      --main-bg: #fdf6e3;          /* base3 */
+      --user-bg: #fdf6e3;          /* base3 */
+      --bot-bg: #eee8d5;           /* base2 */
+      --text-color: #657b83;       /* base00 */
+      --border-color: #839496;     /* base0 */
+      --input-bg: #eee8d5;         /* base2 */
+      --button-color: #268bd2;     /* blue */
+      --button-hover: #2aa198;     /* cyan */
+      --error-bg: #fce3e3;         /* 適度に淡い赤背景(お好みで調整) */
+      --error-color: #dc322f;      /* red */
     }
 
     * {
@@ -37,6 +40,7 @@
       height: 100vh;
       width: 100vw;
       overflow: hidden;
+      background-color: var(--main-bg);
     }
 
     .sidebar {
@@ -63,7 +67,7 @@
     }
 
     .new-chat-btn:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(0, 0, 0, 0.05);
     }
 
     .sidebar-footer {
@@ -71,7 +75,7 @@
       border-top: 1px solid var(--border-color);
       padding-top: 0.75rem;
       font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--sidebar-text);
     }
 
     .main {
@@ -113,14 +117,15 @@
       margin-right: 1rem;
       flex-shrink: 0;
       font-weight: bold;
+      color: #fff;
     }
 
     .user-avatar {
-      background-color: #5437DC;
+      background-color: #b58900; /* yellow */
     }
 
     .bot-avatar {
-      background-color: var(--button-color);
+      background-color: var(--button-color); /* blue */
     }
 
     .message-content {
@@ -128,15 +133,17 @@
       margin-right: 30px;
       margin-left: 0;
       flex-grow: 1;
+      color: var(--text-color);
     }
 
     /* Markdownスタイリング */
     .message-content pre {
-      background-color: #1E1E2E;
+      background-color: #f5f2e9;
       border-radius: 6px;
       padding: 0.75rem;
       margin: 1rem 0;
       overflow-x: auto;
+      color: var(--text-color);
     }
 
     .message-content code {
@@ -145,7 +152,7 @@
     }
 
     .message-content p code {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(0, 0, 0, 0.05);
       padding: 0.125rem 0.25rem;
       border-radius: 3px;
     }
@@ -156,10 +163,11 @@
     }
 
     .message-content blockquote {
-      border-left: 3px solid #8A8A8D;
+      border-left: 3px solid var(--border-color);
       padding-left: 1rem;
-      color: #8A8A8D;
+      color: #586e75; /* base01 */
       margin: 1rem 0;
+      background-color: rgba(0, 0, 0, 0.03);
     }
 
     .message-content table {
@@ -175,7 +183,7 @@
     }
 
     .message-content th {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(0, 0, 0, 0.05);
     }
 
     #form-container {
@@ -215,7 +223,7 @@
       transform: translateY(50%);
       background-color: transparent;
       border: none;
-      color: #8E8EA0;
+      color: #586e75;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -227,7 +235,7 @@
     }
 
     #send-button:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(0, 0, 0, 0.05);
       color: var(--text-color);
     }
 
@@ -245,7 +253,7 @@
       display: inline-block;
       width: 4px;
       height: 4px;
-      background-color: #8E8EA0;
+      background-color: #586e75;
       border-radius: 50%;
       margin-right: 3px;
       animation: typing 1s infinite ease-in-out;
@@ -266,10 +274,11 @@
     }
 
     .error {
-      color: #FF4A4A;
+      color: var(--error-color);
       padding: 0.5rem 1.5rem;
-      background-color: rgba(255, 74, 74, 0.1);
+      background-color: var(--error-bg);
       margin: 0.5rem 0;
+      border-left: 3px solid var(--error-color);
     }
 
     @media (max-width: 768px) {
@@ -325,8 +334,7 @@
     const sendButton = document.getElementById('send-button');
     const newChatBtn = document.querySelector('.new-chat-btn');
 
-    // 実際のLLMエンドポイント（デモ用）
-    // 例: http://localhost:1234/v1/chat/completions
+    // LLMへの接続先URL (例: "http://localhost:1234/v1/chat/completions")
     const LLM_URL = "http://localhost:1234/v1/chat/completions";
     
     // 日本語入力関連のフラグ
@@ -345,7 +353,7 @@
       gfm: true
     });
     
-    // チャット履歴（システムメッセージを辞書仕様に変更）
+    // チャット履歴（システムメッセージを辞書仕様に）
     let chatHistory = [
       {
         role: "system",
@@ -377,7 +385,7 @@
       
       const avatarDiv = document.createElement('div');
       avatarDiv.classList.add('avatar', isUser ? 'user-avatar' : 'bot-avatar');
-      avatarDiv.textContent = isUser ? 'U' : 'D'; // D for "Dictionary"
+      avatarDiv.textContent = isUser ? 'U' : 'D';
       
       const messageDiv = document.createElement('div');
       messageDiv.classList.add('message-content');
@@ -501,7 +509,6 @@
         }
       ];
       
-      // 初期メッセージを表示
       displayWelcomeMessage();
     }
     
@@ -511,13 +518,13 @@
       chatContainer.appendChild(row);
       
       const welcomeMessage = `
-# 英単語辞書アプリ
+# 英単語辞書アプリ (Solarized Light)
 
 英単語を入力すると、その単語の:
 1. **英語での意味**  
-2. **語源(英語)**  
-3. **類似語(英語)**  
-4. **英単語を使った例文(英語)**  
+2. **語源 (英語)**  
+3. **類似語 (英語)**  
+4. **英単語を使った例文 (英語)**  
 
 をAIが解説してくれます。どうぞお試しください！
       `;
@@ -531,23 +538,22 @@
       const userMessage = messageInput.value.trim();
       if (!userMessage || isComposing) return;
       
-      // UIを更新して入力を無効化
       sendButton.disabled = true;
       messageInput.disabled = true;
       
-      // ユーザが入力した英単語をUIに表示
+      // ユーザメッセージを表示
       const userMessageElement = createMessageRow(userMessage, true);
       chatContainer.appendChild(userMessageElement.row);
       
-      // ★★ 「辞書用」のプロンプトを生成 ★★
+      // (1) 入力された英単語をLLMに尋ねるための追加プロンプト
       const dictionaryPrompt = `
 The user wants to know about the English word: "${userMessage}"
 
 Please provide:
 1) The meaning in English,
 2) The etymology in English,
-3) Synonyms in English,
-4) Example sentences using the word in English.
+3) Synonyms (in English),
+4) Example sentences using the word (in English).
 
 If possible, include brief clarifications in English if helpful.
       `.trim();
@@ -560,13 +566,13 @@ If possible, include brief clarifications in English if helpful.
       chatContainer.appendChild(typingIndicator);
       scrollToBottom();
       
-      // ボットのメッセージ要素を作成（初期状態）
+      // ボットのメッセージ要素
       const botMessageElement = createMessageRow('', false);
       
       try {
-        // APIリクエストの作成
+        // APIリクエスト
         const requestData = {
-          model: "dictionary-model-001", // 適宜変更
+          model: "dictionary-model-001",
           messages: chatHistory,
           temperature: 0.7,
           max_tokens: 1024,
@@ -583,23 +589,22 @@ If possible, include brief clarifications in English if helpful.
           throw new Error(`APIリクエストに失敗しました: ${response.status} ${response.statusText}`);
         }
         
-        // タイピングインジケーターを削除してボットのメッセージを表示
+        // タイピングインジケーターを削除してボットのメッセージを追加
         chatContainer.removeChild(typingIndicator);
         chatContainer.appendChild(botMessageElement.row);
         
-        // ストリームからのデータを処理
+        // ストリーム処理
         const botResponse = await processStream(response, botMessageElement.content);
         
-        // チャット履歴にボットの応答を追加
+        // チャット履歴にボットの応答を格納
         chatHistory.push({ role: "assistant", content: botResponse });
         
       } catch (error) {
-        // エラー処理
         chatContainer.removeChild(typingIndicator);
         showError(error.message);
         console.error('Error:', error);
       } finally {
-        // 入力フォームをリセットして再有効化
+        // 入力フォームをリセット
         chatForm.reset();
         messageInput.style.height = '52px';
         sendButton.disabled = true;
@@ -611,27 +616,21 @@ If possible, include brief clarifications in English if helpful.
     // ----------------
     // イベントリスナー
     // ----------------
-    
-    // 日本語入力開始イベント
-    messageInput.addEventListener('compositionstart', function() {
+    messageInput.addEventListener('compositionstart', () => {
       isComposing = true;
     });
     
-    // 日本語入力終了イベント
-    messageInput.addEventListener('compositionend', function() {
+    messageInput.addEventListener('compositionend', () => {
       isComposing = false;
     });
     
-    // メッセージ入力の変更検知
-    messageInput.addEventListener('input', function() {
+    messageInput.addEventListener('input', () => {
       autoResizeTextarea();
-      sendButton.disabled = !this.value.trim();
+      sendButton.disabled = !messageInput.value.trim();
     });
     
-    // Enterキーの処理（Shift+Enterは改行）
-    messageInput.addEventListener('keydown', function(e) {
+    messageInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
-        // 日本語入力中でなければ送信処理
         if (!isComposing) {
           e.preventDefault();
           if (!sendButton.disabled) {
@@ -641,19 +640,15 @@ If possible, include brief clarifications in English if helpful.
       }
     });
     
-    // 新しい検索ボタンのクリック
     newChatBtn.addEventListener('click', clearChat);
     
-    // チャットフォームの送信
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      // 日本語入力中でなければ送信処理
       if (!isComposing) {
         sendMessage();
       }
     });
     
-    // ページロード時の初期化
     window.addEventListener('load', () => {
       messageInput.focus();
       displayWelcomeMessage();
