@@ -1,3 +1,5 @@
+// main.js
+
 // ----------------
 // グローバル変数
 // ----------------
@@ -9,6 +11,17 @@ const newChatBtn = document.querySelector('.new-chat-btn');
 
 // LLMへの接続先URL (例: "http://localhost:1234/v1/chat/completions")
 const LLM_URL = "http://localhost:1234/v1/chat/completions";
+
+// システムメッセージ: 「英単語辞書として振る舞う」よう指示
+const SYSTEM_MESSAGE = `あなたは英単語辞書として振る舞います。
+ユーザから渡される英単語について、
+(1) 英語での意味
+(2) 発音記号
+(3) 語源(英語の説明)
+(4) 類似語(英語)
+(5) 英単語を使用した例文(英語)
+のみを示してください。ほかのコメントは不要です。
+`;
 
 // 日本語入力関連のフラグ
 let isComposing = false;
@@ -26,21 +39,6 @@ marked.setOptions({
   gfm: true
 });
 
-// チャット履歴（システムメッセージを辞書仕様に）
-let chatHistory = [
-  {
-    role: "system",
-    content: `あなたは英単語辞書として振る舞います。
-ユーザから渡される英単語について、
-(1) 英語での意味
-(2) 語源(英語の説明)
-(3) 類似語(英語)
-(4) 英単語を使用した例文(英語)
-を示してください。
-必要があれば簡単な補足説明をしても構いません。`
-  }
-];
-
 // ----------------
 // ヘルパー関数
 // ----------------
@@ -48,7 +46,7 @@ let chatHistory = [
 // テキストエリアの高さ自動調整
 function autoResizeTextarea() {
   messageInput.style.height = 'auto';
-  messageInput.style.height = 
+  messageInput.style.height =
     (messageInput.scrollHeight > 200 ? 200 : messageInput.scrollHeight) + 'px';
 }
 
@@ -68,9 +66,10 @@ function createMessageRow(content, isUser) {
   rowDiv.appendChild(messageDiv);
   
   if (isUser) {
+    // ユーザ入力はそのままテキスト表示
     messageDiv.textContent = content;
   } else {
-    // ボットの場合は後ほどMarkdownとして描画
+    // ボットからの返答は後でMarkdownとして描画
     messageDiv.innerHTML = '';
   }
   
@@ -166,23 +165,9 @@ async function processStream(response, messageContentDiv) {
   return fullText;
 }
 
-// チャットをクリア
+// チャットをクリア（UIのみリセット）
 function clearChat() {
   chatContainer.innerHTML = '';
-  chatHistory = [
-    {
-      role: "system",
-      content: `あなたは英単語辞書として振る舞います。
-ユーザから渡される英単語について、
-(1) 英語での意味
-(2) 語源(英語の説明)
-(3) 類似語(英語)
-(4) 英単語を使用した例文(英語)
-を示してください。
-必要があれば簡単な補足説明をしても構いません。`
-    }
-  ];
-  
   displayWelcomeMessage();
 }
 
@@ -216,7 +201,7 @@ async function sendMessage() {
   sendButton.disabled = true;
   messageInput.disabled = true;
   
-  // ユーザメッセージを表示
+  // ユーザメッセージをUIに表示
   const userMessageElement = createMessageRow(userMessage, true);
   chatContainer.appendChild(userMessageElement.row);
   
@@ -226,34 +211,35 @@ The user wants to know about the English word: "${userMessage}"
 
 Please provide:
 1) The meaning in English,
-2) The etymology in English,
-3) Synonyms (in English),
-4) Example sentences using the word (in English).
+2) phonetic symbol
+3) The etymology in English,
+4) Synonyms (in English),
+5) Example sentences using the word (in English).
 
-If possible, include brief clarifications in English if helpful.
   `.trim();
   
-  // チャット履歴にユーザの入力を追加
-  chatHistory.push({ role: "user", content: dictionaryPrompt });
+  // SSEでLLMへ送る会話履歴は「システムメッセージ+最新ユーザ入力」だけ
+  const requestData = {
+    model: "dictionary-model-001",
+    messages: [
+      { role: "system", content: SYSTEM_MESSAGE },
+      { role: "user", content: dictionaryPrompt }
+    ],
+    temperature: 0.7,
+    max_tokens: 1024,
+    stream: true
+  };
   
   // タイピングインジケーターを表示
   const typingIndicator = createTypingIndicator();
   chatContainer.appendChild(typingIndicator);
   scrollToBottom();
   
-  // ボットのメッセージ要素
+  // ボットのメッセージ要素を用意
   const botMessageElement = createMessageRow('', false);
   
   try {
     // APIリクエスト
-    const requestData = {
-      model: "dictionary-model-001",
-      messages: chatHistory,
-      temperature: 0.7,
-      max_tokens: 1024,
-      stream: true
-    };
-    
     const response = await fetch(LLM_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -264,15 +250,12 @@ If possible, include brief clarifications in English if helpful.
       throw new Error(`APIリクエストに失敗しました: ${response.status} ${response.statusText}`);
     }
     
-    // タイピングインジケーターを削除してボットのメッセージを追加
+    // タイピングインジケーターを削除してボットのメッセージをUIに追加
     chatContainer.removeChild(typingIndicator);
     chatContainer.appendChild(botMessageElement.row);
     
-    // ストリーム処理
-    const botResponse = await processStream(response, botMessageElement.content);
-    
-    // チャット履歴にボットの応答を格納
-    chatHistory.push({ role: "assistant", content: botResponse });
+    // ストリームを処理してボットの応答を表示
+    await processStream(response, botMessageElement.content);
     
   } catch (error) {
     chatContainer.removeChild(typingIndicator);
@@ -291,19 +274,24 @@ If possible, include brief clarifications in English if helpful.
 // ----------------
 // イベントリスナー
 // ----------------
+
+// 日本語入力を開始したタイミング
 messageInput.addEventListener('compositionstart', () => {
   isComposing = true;
 });
 
+// 日本語入力が終了したタイミング
 messageInput.addEventListener('compositionend', () => {
   isComposing = false;
 });
 
+// 入力欄の内容が変化
 messageInput.addEventListener('input', () => {
   autoResizeTextarea();
   sendButton.disabled = !messageInput.value.trim();
 });
 
+// Enterキーで送信（Shift+Enterは改行）
 messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     if (!isComposing) {
@@ -315,8 +303,10 @@ messageInput.addEventListener('keydown', (e) => {
   }
 });
 
+// 「新しい検索」ボタンが押されたらチャットUIをクリア
 newChatBtn.addEventListener('click', clearChat);
 
+// フォーム送信時
 chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!isComposing) {
@@ -324,6 +314,7 @@ chatForm.addEventListener('submit', async (e) => {
   }
 });
 
+// ページ読み込み時
 window.addEventListener('load', () => {
   messageInput.focus();
   displayWelcomeMessage();
