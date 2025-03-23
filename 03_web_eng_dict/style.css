@@ -1,0 +1,288 @@
+/* Solarized Light配色 */
+:root {
+  --sidebar-bg: #eee8d5;       /* base2 */
+  --sidebar-text: #657b83;     /* base00 */
+  --main-bg: #fdf6e3;          /* base3 */
+  --user-bg: #fdf6e3;          /* base3 */
+  --bot-bg: #eee8d5;           /* base2 */
+  --text-color: #657b83;       /* base00 */
+  --border-color: #839496;     /* base0 */
+  --input-bg: #eee8d5;         /* base2 */
+  --button-color: #268bd2;     /* blue */
+  --button-hover: #2aa198;     /* cyan */
+  --error-bg: #fce3e3;         /* 適度に淡い赤背景(お好みで調整) */
+  --error-color: #dc322f;      /* red */
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Söhne', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 
+               Roboto, Ubuntu, Cantarell, sans-serif;
+  line-height: 1.5;
+  color: var(--text-color);
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--main-bg);
+}
+
+/* サイドバー */
+.sidebar {
+  width: 260px;
+  background-color: var(--sidebar-bg);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.new-chat-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--sidebar-text);
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.new-chat-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--sidebar-text);
+}
+
+/* メイン */
+.main {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--main-bg);
+  height: 100%;
+}
+
+#chat-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* メッセージ */
+.message-row {
+  padding: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-row {
+  background-color: var(--user-bg);
+}
+
+.bot-row {
+  background-color: var(--bot-bg);
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  margin-right: 1rem;
+  flex-shrink: 0;
+  font-weight: bold;
+  color: #fff;
+}
+
+.user-avatar {
+  background-color: #b58900; /* yellow */
+}
+
+.bot-avatar {
+  background-color: var(--button-color); /* blue */
+}
+
+.message-content {
+  max-width: 800px;
+  margin-right: 30px;
+  margin-left: 0;
+  flex-grow: 1;
+  color: var(--text-color);
+}
+
+/* Markdownスタイル */
+.message-content pre {
+  background-color: #f5f2e9;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  color: var(--text-color);
+}
+
+.message-content code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  font-size: 0.875rem;
+}
+
+.message-content p code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+}
+
+.message-content ul, .message-content ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.message-content blockquote {
+  border-left: 3px solid var(--border-color);
+  padding-left: 1rem;
+  color: #586e75; /* base01 */
+  margin: 1rem 0;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.message-content table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+.message-content th, .message-content td {
+  border: 1px solid var(--border-color);
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.message-content th {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* フォーム */
+#form-container {
+  padding: 1rem 1rem 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+#chat-form {
+  display: flex;
+  position: relative;
+  width: 100%;
+}
+
+#message-input {
+  flex-grow: 1;
+  padding: 0.875rem 2.5rem 0.875rem 0.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 1rem;
+  color: var(--text-color);
+  background-color: var(--input-bg);
+  resize: none;
+  height: 52px;
+  max-height: 200px;
+  overflow-y: auto;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+#send-button {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 50%;
+  transform: translateY(50%);
+  background-color: transparent;
+  border: none;
+  color: #586e75;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+#send-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--text-color);
+}
+
+#send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* タイピングインジケーター */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+}
+
+.typing-indicator span {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background-color: #586e75;
+  border-radius: 50%;
+  margin-right: 3px;
+  animation: typing 1s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+  margin-right: 0;
+}
+
+@keyframes typing {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* エラーメッセージ */
+.error {
+  color: var(--error-color);
+  padding: 0.5rem 1.5rem;
+  background-color: var(--error-bg);
+  margin: 0.5rem 0;
+  border-left: 3px solid var(--error-color);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+}
+
