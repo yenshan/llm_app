@@ -178,15 +178,7 @@ function displayWelcomeMessage() {
   chatContainer.appendChild(row);
 
   const welcomeMessage = `
-# 英単語辞書アプリ (Solarized Light)
-
-英単語を入力すると、その単語の:
-1. **英語での意味**  
-2. **語源 (英語)**  
-3. **類似語 (英語)**  
-4. **英単語を使った例文 (英語)**  
-
-をAIが解説してくれます。どうぞお試しください！
+# 英単語辞書アプリ
   `;
 
   content.innerHTML = renderMarkdown(welcomeMessage);
