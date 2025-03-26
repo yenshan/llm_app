@@ -3,24 +3,21 @@
 // ----------------
 // グローバル変数
 // ----------------
-const chatContainer = document.getElementById('chat-container');
-const chatForm = document.getElementById('chat-form');
-const messageInput = document.getElementById('message-input');
-const sendButton = document.getElementById('send-button');
-const newChatBtn = document.querySelector('.new-chat-btn');
+const chatContainer = document.getElementById("chat-container");
+const chatForm = document.getElementById("chat-form");
+const messageInput = document.getElementById("message-input");
+const sendButton = document.getElementById("send-button");
+const newChatBtn = document.getElementById("new-chat-btn");
+// 追加: ダウンロードボタン
+const downloadChatBtn = document.getElementById("download-chat-btn");
 
-// LLMへの接続先URL (例: "http://localhost:1234/v1/chat/completions")
+// LLMへの接続先URL
 const LLM_URL = "http://localhost:1234/v1/chat/completions";
 
 // システムメッセージ: 「英単語辞書として振る舞う」よう指示
+
 const SYSTEM_MESSAGE = `あなたは英単語辞書として振る舞います。
-ユーザから渡される英単語について、
-(1) 英語での意味
-(2) 発音記号
-(3) 語源(英語の説明)
-(4) 類似語(英語)
-(5) 英単語を使用した例文(英語)
-のみを示してください。ほかのコメントは不要です。
+ユーザから質問されたことのみに答えてください。他のコメントは不要です。
 `;
 
 // 日本語入力関連のフラグ
@@ -28,7 +25,7 @@ let isComposing = false;
 
 // marked.jsの設定
 marked.setOptions({
-  highlight: function(code, lang) {
+  highlight: function (code, lang) {
     if (lang && hljs.getLanguage(lang)) {
       return hljs.highlight(code, { language: lang }).value;
     } else {
@@ -36,7 +33,7 @@ marked.setOptions({
     }
   },
   breaks: true,
-  gfm: true
+  gfm: true,
 });
 
 // ----------------
@@ -45,34 +42,34 @@ marked.setOptions({
 
 // テキストエリアの高さ自動調整
 function autoResizeTextarea() {
-  messageInput.style.height = 'auto';
+  messageInput.style.height = "auto";
   messageInput.style.height =
-    (messageInput.scrollHeight > 200 ? 200 : messageInput.scrollHeight) + 'px';
+    (messageInput.scrollHeight > 200 ? 200 : messageInput.scrollHeight) + "px";
 }
 
 // メッセージ行の作成
 function createMessageRow(content, isUser) {
-  const rowDiv = document.createElement('div');
-  rowDiv.classList.add('message-row', isUser ? 'user-row' : 'bot-row');
-  
-  const avatarDiv = document.createElement('div');
-  avatarDiv.classList.add('avatar', isUser ? 'user-avatar' : 'bot-avatar');
-  avatarDiv.textContent = isUser ? 'U' : 'D';
-  
-  const messageDiv = document.createElement('div');
-  messageDiv.classList.add('message-content');
-  
+  const rowDiv = document.createElement("div");
+  rowDiv.classList.add("message-row", isUser ? "user-row" : "bot-row");
+
+  const avatarDiv = document.createElement("div");
+  avatarDiv.classList.add("avatar", isUser ? "user-avatar" : "bot-avatar");
+  avatarDiv.textContent = isUser ? "U" : "D";
+
+  const messageDiv = document.createElement("div");
+  messageDiv.classList.add("message-content");
+
   rowDiv.appendChild(avatarDiv);
   rowDiv.appendChild(messageDiv);
-  
+
   if (isUser) {
     // ユーザ入力はそのままテキスト表示
     messageDiv.textContent = content;
   } else {
     // ボットからの返答は後でMarkdownとして描画
-    messageDiv.innerHTML = '';
+    messageDiv.innerHTML = "";
   }
-  
+
   return { row: rowDiv, content: messageDiv };
 }
 
@@ -83,24 +80,24 @@ function renderMarkdown(text) {
 
 // ボットの応答中に表示するタイピングインジケーターの作成
 function createTypingIndicator() {
-  const rowDiv = document.createElement('div');
-  rowDiv.classList.add('message-row', 'bot-row');
-  rowDiv.id = 'typing-indicator-row';
-  
-  const avatarDiv = document.createElement('div');
-  avatarDiv.classList.add('avatar', 'bot-avatar');
-  avatarDiv.textContent = 'D';
-  
-  const indicatorDiv = document.createElement('div');
-  indicatorDiv.classList.add('typing-indicator');
+  const rowDiv = document.createElement("div");
+  rowDiv.classList.add("message-row", "bot-row");
+  rowDiv.id = "typing-indicator-row";
+
+  const avatarDiv = document.createElement("div");
+  avatarDiv.classList.add("avatar", "bot-avatar");
+  avatarDiv.textContent = "D";
+
+  const indicatorDiv = document.createElement("div");
+  indicatorDiv.classList.add("typing-indicator");
   for (let i = 0; i < 3; i++) {
-    const dot = document.createElement('span');
+    const dot = document.createElement("span");
     indicatorDiv.appendChild(dot);
   }
-  
+
   rowDiv.appendChild(avatarDiv);
   rowDiv.appendChild(indicatorDiv);
-  
+
   return rowDiv;
 }
 
@@ -111,8 +108,8 @@ function scrollToBottom() {
 
 // エラーメッセージの表示
 function showError(message) {
-  const errorDiv = document.createElement('div');
-  errorDiv.classList.add('error');
+  const errorDiv = document.createElement("div");
+  errorDiv.classList.add("error");
   errorDiv.textContent = `エラー: ${message}`;
   chatContainer.appendChild(errorDiv);
   scrollToBottom();
@@ -122,38 +119,42 @@ function showError(message) {
 async function processStream(response, messageContentDiv) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
-  let fullText = '';
-  
+  let fullText = "";
+
   try {
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
-      
+
       const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n');
-      
+      const lines = chunk.split("\n");
+
       for (const line of lines) {
-        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+        if (line.startsWith("data: ") && line !== "data: [DONE]") {
           try {
             const data = JSON.parse(line.substring(6));
-            
+
             // ストリームからのコンテンツを抽出
-            if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
+            if (
+              data.choices &&
+              data.choices[0].delta &&
+              data.choices[0].delta.content
+            ) {
               const content = data.choices[0].delta.content;
               fullText += content;
-              
+
               // Markdownとしてレンダリング
               messageContentDiv.innerHTML = renderMarkdown(fullText);
-              
+
               // コードブロックにシンタックスハイライトを適用
-              messageContentDiv.querySelectorAll('pre code').forEach((block) => {
+              messageContentDiv.querySelectorAll("pre code").forEach((block) => {
                 hljs.highlightElement(block);
               });
-              
+
               scrollToBottom();
             }
           } catch (e) {
-            console.error('JSON parsing error:', e, 'for line:', line);
+            console.error("JSON parsing error:", e, "for line:", line);
           }
         }
       }
@@ -161,21 +162,21 @@ async function processStream(response, messageContentDiv) {
   } catch (error) {
     showError(`ストリーム処理中にエラーが発生しました: ${error.message}`);
   }
-  
+
   return fullText;
 }
 
 // チャットをクリア（UIのみリセット）
 function clearChat() {
-  chatContainer.innerHTML = '';
+  chatContainer.innerHTML = "";
   displayWelcomeMessage();
 }
 
 // 初期メッセージの表示
 function displayWelcomeMessage() {
-  const { row, content } = createMessageRow('', false);
+  const { row, content } = createMessageRow("", false);
   chatContainer.appendChild(row);
-  
+
   const welcomeMessage = `
 # 英単語辞書アプリ (Solarized Light)
 
@@ -187,7 +188,7 @@ function displayWelcomeMessage() {
 
 をAIが解説してくれます。どうぞお試しください！
   `;
-  
+
   content.innerHTML = renderMarkdown(welcomeMessage);
   scrollToBottom();
 }
@@ -196,79 +197,114 @@ function displayWelcomeMessage() {
 async function sendMessage() {
   const userMessage = messageInput.value.trim();
   if (!userMessage || isComposing) return;
-  
+
   // 入力を無効化
   sendButton.disabled = true;
   messageInput.disabled = true;
-  
+
   // ユーザメッセージをUIに表示
   const userMessageElement = createMessageRow(userMessage, true);
   chatContainer.appendChild(userMessageElement.row);
-  
-  // (1) 入力された英単語をLLMに尋ねるための追加プロンプト
+
+  // ユーザ入力をLLMに尋ねるためのプロンプト
   const dictionaryPrompt = `
 The user wants to know about the English word: "${userMessage}"
 
 Please provide:
-1) The meaning in English,
-2) phonetic symbol
-3) The etymology in English,
-4) Synonyms (in English),
-5) Example sentences using the word (in English).
+1. The meaning in English
+2. phonetic symbol
+3. two examples of a slightly longer passage using the word (2–3 sentences)
+4. two sample conversations using the word
+5. Explain in English when this word should be used.
+`.trim();
 
-  `.trim();
-  
-  // SSEでLLMへ送る会話履歴は「システムメッセージ+最新ユーザ入力」だけ
+  // SSEでLLMへ送る会話履歴(今回、過去履歴は送らない)
   const requestData = {
     model: "dictionary-model-001",
     messages: [
       { role: "system", content: SYSTEM_MESSAGE },
-      { role: "user", content: dictionaryPrompt }
+      { role: "user", content: dictionaryPrompt },
     ],
     temperature: 0.7,
     max_tokens: 1024,
-    stream: true
+    stream: true,
   };
-  
+
   // タイピングインジケーターを表示
   const typingIndicator = createTypingIndicator();
   chatContainer.appendChild(typingIndicator);
   scrollToBottom();
-  
-  // ボットのメッセージ要素を用意
-  const botMessageElement = createMessageRow('', false);
-  
+
+  // ボットのメッセージ要素
+  const botMessageElement = createMessageRow("", false);
+
   try {
     // APIリクエスト
     const response = await fetch(LLM_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestData)
+      body: JSON.stringify(requestData),
     });
-    
+
     if (!response.ok) {
-      throw new Error(`APIリクエストに失敗しました: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `APIリクエストに失敗しました: ${response.status} ${response.statusText}`
+      );
     }
-    
+
     // タイピングインジケーターを削除してボットのメッセージをUIに追加
     chatContainer.removeChild(typingIndicator);
     chatContainer.appendChild(botMessageElement.row);
-    
+
     // ストリームを処理してボットの応答を表示
     await processStream(response, botMessageElement.content);
-    
   } catch (error) {
     chatContainer.removeChild(typingIndicator);
     showError(error.message);
-    console.error('Error:', error);
+    console.error("Error:", error);
   } finally {
     // 入力フォームをリセット
     chatForm.reset();
-    messageInput.style.height = '52px';
+    messageInput.style.height = "52px";
     sendButton.disabled = true;
     messageInput.disabled = false;
     messageInput.focus();
   }
+}
+
+// 追加: 画面に表示されている会話をダウンロード
+function downloadChat() {
+  // .message-row 単位でテキストをまとめる
+  const rows = chatContainer.querySelectorAll(".message-row");
+  const lines = [];
+
+  rows.forEach((row) => {
+    const avatar = row.querySelector(".avatar");
+    const contentElem = row.querySelector(".message-content");
+    if (!avatar || !contentElem) return;
+
+    // 誰の発話か(U: User / D: Dictionary)
+    const speaker = avatar.textContent === "U" ? "User" : "Dictionary";
+
+    // テキスト部分(改行を適宜挿入)
+    const text = contentElem.innerText.trim();
+    lines.push(`${speaker}: ${text}`);
+  });
+
+  // ファイルに書き出すテキスト
+  const fileContent = lines.join("\n\n");
+
+  // Blobを生成してリンクからダウンロード
+  const blob = new Blob([fileContent], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  // ダウンロードするファイル名
+  a.download = "chat-log.txt";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ----------------
@@ -276,24 +312,24 @@ Please provide:
 // ----------------
 
 // 日本語入力を開始したタイミング
-messageInput.addEventListener('compositionstart', () => {
+messageInput.addEventListener("compositionstart", () => {
   isComposing = true;
 });
 
 // 日本語入力が終了したタイミング
-messageInput.addEventListener('compositionend', () => {
+messageInput.addEventListener("compositionend", () => {
   isComposing = false;
 });
 
 // 入力欄の内容が変化
-messageInput.addEventListener('input', () => {
+messageInput.addEventListener("input", () => {
   autoResizeTextarea();
   sendButton.disabled = !messageInput.value.trim();
 });
 
 // Enterキーで送信（Shift+Enterは改行）
-messageInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+messageInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
     if (!isComposing) {
       e.preventDefault();
       if (!sendButton.disabled) {
@@ -304,10 +340,13 @@ messageInput.addEventListener('keydown', (e) => {
 });
 
 // 「新しい検索」ボタンが押されたらチャットUIをクリア
-newChatBtn.addEventListener('click', clearChat);
+newChatBtn.addEventListener("click", clearChat);
+
+// ダウンロードボタンが押されたら現在の会話をファイル保存
+downloadChatBtn.addEventListener("click", downloadChat);
 
 // フォーム送信時
-chatForm.addEventListener('submit', async (e) => {
+chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!isComposing) {
     sendMessage();
@@ -315,8 +354,9 @@ chatForm.addEventListener('submit', async (e) => {
 });
 
 // ページ読み込み時
-window.addEventListener('load', () => {
+window.addEventListener("load", () => {
   messageInput.focus();
   displayWelcomeMessage();
 });
+
 
