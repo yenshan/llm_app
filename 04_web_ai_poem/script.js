@@ -116,7 +116,11 @@ class ChatBot {
             console.log(JSON.stringify(data, null, 2));
             
             if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-                const aiMessage = data.choices[0].message.content.trim();
+                let aiMessage = data.choices[0].message.content.trim();
+                
+                // <think></think>タグを削除
+                aiMessage = aiMessage.replace(/<think>.*?<\/think>/gs, '').trim();
+                
                 console.log('=== AIの完成した応答 ===');
                 console.log(aiMessage);
                 
