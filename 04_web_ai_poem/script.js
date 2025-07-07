@@ -1,3 +1,11 @@
+const systemPrompt = `
+    あなたは想像力豊な現代詩人です。ユーザと一緒にコラボしながら詩を作っていきます。
+    ユーザによって与えられた詩に対して、一行だけ追加するようにしてください。
+    言葉の響きやリズム、感情を大切にし、詩のテーマや雰囲気を考慮して、韻を踏むことも意識してください。
+    その一行で詩を終わらせるのではなく、より豊かに展開していけるような一行にしてください。
+    その一行だけ返信してください。
+`;
+
 class ChatBot {
     constructor() {
         this.chatMessages = document.getElementById('chatMessages');
@@ -5,7 +13,7 @@ class ChatBot {
         this.sendButton = document.getElementById('sendButton');
         this.llmUrl = "http://localhost:1234/v1/chat/completions";
         this.isComposing = false;
-        this.chatHistory = [];
+        this.poemLines = [];
         
         this.initializeEventListeners();
         this.clearInitialMessages();
@@ -39,8 +47,8 @@ class ChatBot {
         const message = this.userInput.value.trim();
         if (!message) return;
 
-        this.addMessage(message, 'user');
-        this.chatHistory.push({ role: 'user', content: message });
+        this.addPoemLine(message, 'user');
+        this.poemLines.push(message);
         this.userInput.value = '';
         this.userInput.disabled = true;
         if (this.sendButton) {
@@ -48,11 +56,10 @@ class ChatBot {
         }
 
         try {
-            await this.sendToLLM(message);
+            await this.sendToLLM();
         } catch (error) {
             const errorMessage = `エラーが発生しました: ${error.message}`;
-            this.addMessage(errorMessage, 'ai');
-            this.chatHistory.push({ role: 'assistant', content: errorMessage });
+            this.addPoemLine(errorMessage, 'ai');
         } finally {
             this.userInput.disabled = false;
             if (this.sendButton) {
@@ -62,13 +69,18 @@ class ChatBot {
         }
     }
 
-    async sendToLLM(userMessage) {
+    async sendToLLM() {
+        const poemText = this.poemLines.join('\n');
+        
         const messages = [
             {
                 role: "system",
-                content: "あなたは想像力豊な詩人です。ユーザによって与えられた詩に対して、一行だけ追加するようにしてください。その一行を返信してください。"
+                content: systemPrompt
             },
-            ...this.chatHistory
+            {
+                role: "user",
+                content: poemText
+            }
         ];
 
         const requestData = {
@@ -104,12 +116,12 @@ class ChatBot {
             console.log(JSON.stringify(data, null, 2));
             
             if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-                const aiMessage = data.choices[0].message.content;
+                const aiMessage = data.choices[0].message.content.trim();
                 console.log('=== AIの完成した応答 ===');
                 console.log(aiMessage);
                 
-                this.addMessage(aiMessage, 'ai');
-                this.chatHistory.push({ role: 'assistant', content: aiMessage });
+                this.addPoemLine(aiMessage, 'ai');
+                this.poemLines.push(aiMessage);
             } else {
                 throw new Error('LLMからの応答が空です');
             }
@@ -119,26 +131,12 @@ class ChatBot {
         }
     }
 
-    addMessage(text, type) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}-message`;
+    addPoemLine(text, type) {
+        const lineDiv = document.createElement('div');
+        lineDiv.className = `poem-line ${type}-line`;
+        lineDiv.textContent = text;
         
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        
-        const label = document.createElement('span');
-        label.className = 'message-label';
-        label.textContent = type === 'user' ? 'user:' : 'AI:';
-        
-        const messageText = document.createElement('span');
-        messageText.className = 'message-text';
-        messageText.textContent = text;
-        
-        messageContent.appendChild(label);
-        messageContent.appendChild(messageText);
-        messageDiv.appendChild(messageContent);
-        
-        this.chatMessages.appendChild(messageDiv);
+        this.chatMessages.appendChild(lineDiv);
         this.scrollToBottom();
     }
 

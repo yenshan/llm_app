@@ -25,39 +25,17 @@ body {
 
 .chat-messages {
     flex: 1;
-    padding: 20px;
+    padding: 30px;
     overflow-y: auto;
-    background-color: #f0f0f0;
+    background-color: #fafafa;
+    font-family: 'Georgia', serif;
 }
 
-.message {
-    margin-bottom: 15px;
-}
-
-.message-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-}
-
-.message-label {
-    font-weight: bold;
+.poem-line {
+    margin-bottom: 10px;
     color: #333;
-    min-width: 40px;
-}
-
-.user-message .message-label {
-    color: #0066cc;
-}
-
-.ai-message .message-label {
-    color: #ff6b35;
-}
-
-.message-text {
-    color: #333;
-    line-height: 1.4;
-    flex: 1;
+    line-height: 1.6;
+    font-size: 16px;
 }
 
 .input-container {
