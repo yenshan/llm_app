@@ -2,16 +2,31 @@ class ChatBot {
     constructor() {
         this.chatMessages = document.getElementById('chatMessages');
         this.userInput = document.getElementById('userInput');
+        this.sendButton = document.getElementById('sendButton');
+        this.llmUrl = "http://localhost:1234/v1/chat/completions";
+        this.isComposing = false;
         
         this.initializeEventListeners();
         this.clearInitialMessages();
     }
 
     initializeEventListeners() {
+        if (this.sendButton) {
+            this.sendButton.addEventListener('click', () => this.handleSend());
+        }
+        
         this.userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !this.isComposing) {
                 this.handleSend();
             }
+        });
+        
+        this.userInput.addEventListener('compositionstart', () => {
+            this.isComposing = true;
+        });
+        
+        this.userInput.addEventListener('compositionend', () => {
+            this.isComposing = false;
         });
     }
 
@@ -19,20 +34,118 @@ class ChatBot {
         this.chatMessages.innerHTML = '';
     }
 
-    handleSend() {
+    async handleSend() {
         const message = this.userInput.value.trim();
         if (!message) return;
 
         this.addMessage(message, 'user');
         this.userInput.value = '';
         this.userInput.disabled = true;
+        if (this.sendButton) {
+            this.sendButton.disabled = true;
+        }
 
-        setTimeout(() => {
-            const aiResponse = this.generateAIResponse(message);
-            this.addMessage(aiResponse, 'ai');
+        try {
+            await this.sendToLLM(message);
+        } catch (error) {
+            this.addMessage(`エラーが発生しました: ${error.message}`, 'ai');
+        } finally {
             this.userInput.disabled = false;
+            if (this.sendButton) {
+                this.sendButton.disabled = false;
+            }
             this.userInput.focus();
-        }, 1000);
+        }
+    }
+
+    async sendToLLM(userMessage) {
+        const requestData = {
+            model: "chat-model-001",
+            messages: [
+                {
+                    role: "system",
+                    content: "あなたは親切で知識豊富なAIアシスタントです。日本語で自然な会話を心がけてください。"
+                },
+                {
+                    role: "user",
+                    content: userMessage
+                }
+            ],
+            temperature: 0.7,
+            max_tokens: 1024,
+            stream: true
+        };
+
+        const response = await fetch(this.llmUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`APIリクエストに失敗しました: ${response.status} ${response.statusText}`);
+        }
+
+        await this.processStream(response);
+    }
+
+    async processStream(response) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let fullText = '';
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message ai-message';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        const label = document.createElement('span');
+        label.className = 'message-label';
+        label.textContent = 'AI:';
+        
+        const messageText = document.createElement('span');
+        messageText.className = 'message-text';
+        messageText.textContent = '';
+        
+        messageContent.appendChild(label);
+        messageContent.appendChild(messageText);
+        messageDiv.appendChild(messageContent);
+        
+        this.chatMessages.appendChild(messageDiv);
+        this.scrollToBottom();
+
+        try {
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                        try {
+                            const data = JSON.parse(line.substring(6));
+                            
+                            if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
+                                const content = data.choices[0].delta.content;
+                                fullText += content;
+                                messageText.textContent = fullText;
+                                this.scrollToBottom();
+                            }
+                        } catch (e) {
+                            console.error('JSON parsing error:', e);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Stream processing error:', error);
+            messageText.textContent = 'ストリーミング処理中にエラーが発生しました。';
+        }
     }
 
     addMessage(text, type) {
@@ -56,36 +169,6 @@ class ChatBot {
         
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
-    }
-
-    generateAIResponse(userMessage) {
-        const responses = [
-            "そのお話はとても興味深いですね。",
-            "なるほど、よく理解できました。",
-            "面白い視点ですね。もう少し詳しく教えてください。",
-            "それについて考えてみます。",
-            "素晴らしいアイデアですね！",
-            "その件について、いくつか質問があります。",
-            "とても参考になりました。",
-            "なるほど、そういう考え方もありますね。",
-            "詳しく説明していただき、ありがとうございます。",
-            "それは新しい発見ですね。"
-        ];
-        
-        if (userMessage.includes('こんにちは') || userMessage.includes('はじめまして')) {
-            return "こんにちは！お気軽にお話しください。";
-        }
-        
-        if (userMessage.includes('元気') || userMessage.includes('調子')) {
-            return "私は元気です！あなたはいかがですか？";
-        }
-        
-        if (userMessage.includes('ありがとう') || userMessage.includes('感謝')) {
-            return "どういたしまして！お役に立てて嬉しいです。";
-        }
-        
-        const randomIndex = Math.floor(Math.random() * responses.length);
-        return responses[randomIndex];
     }
 
     scrollToBottom() {
