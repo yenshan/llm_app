@@ -11,7 +11,13 @@ class ChatBot {
         this.chatMessages = document.getElementById('chatMessages');
         this.userInput = document.getElementById('userInput');
         this.sendButton = document.getElementById('sendButton');
-        this.llmUrl = "http://localhost:1234/v1/chat/completions";
+        this.apiKeyInput = document.getElementById('apiKey');
+        this.providerSelect = document.getElementById('provider');
+        
+        // API設定
+        this.localUrl = "http://localhost:1234/v1/chat/completions";
+        this.openaiUrl = "https://api.openai.com/v1/chat/completions";
+        
         this.isComposing = false;
         this.poemLines = [];
         
@@ -37,6 +43,16 @@ class ChatBot {
         this.userInput.addEventListener('compositionend', () => {
             this.isComposing = false;
         });
+        
+        // プロバイダー変更時の処理
+        if (this.providerSelect) {
+            this.providerSelect.addEventListener('change', () => {
+                this.toggleApiKeyVisibility();
+            });
+        }
+        
+        // 初期状態でAPIキー表示を設定
+        this.toggleApiKeyVisibility();
     }
 
     clearInitialMessages() {
@@ -69,7 +85,15 @@ class ChatBot {
         }
     }
 
+    toggleApiKeyVisibility() {
+        if (this.apiKeyInput && this.providerSelect) {
+            const isOpenAI = this.providerSelect.value === 'openai';
+            this.apiKeyInput.style.display = isOpenAI ? 'block' : 'none';
+        }
+    }
+
     async sendToLLM() {
+        const provider = this.providerSelect ? this.providerSelect.value : 'local';
         const poemText = this.poemLines.join('\n');
         
         const messages = [
@@ -83,22 +107,45 @@ class ChatBot {
             }
         ];
 
-        const requestData = {
-            model: "chat-model-001",
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 1024,
-            stream: false
-        };
+        let requestData, headers, url;
+        
+        if (provider === 'openai') {
+            if (!config || !config.openai || !config.openai.apiKey || config.openai.apiKey === 'your-openai-api-key-here') {
+                throw new Error('config.jsでOpenAI APIキーを設定してください');
+            }
+            const apiKey = config.openai.apiKey;
+            
+            url = this.openaiUrl;
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            };
+            requestData = {
+                model: "gpt-4o-mini",
+                messages: messages,
+                temperature: 0.7,
+                max_tokens: 1024
+            };
+        } else {
+            url = this.localUrl;
+            headers = {
+                'Content-Type': 'application/json'
+            };
+            requestData = {
+                model: "chat-model-001",
+                messages: messages,
+                temperature: 0.7,
+                max_tokens: 1024,
+                stream: false
+            };
+        }
 
         console.log('=== LLMへの送信メッセージ ===');
         console.log(JSON.stringify(requestData, null, 2));
 
-        const response = await fetch(this.llmUrl, {
+        const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify(requestData)
         });
 

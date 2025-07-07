@@ -38,6 +38,21 @@ body {
     font-size: 16px;
 }
 
+.settings-container {
+    padding: 15px 20px 0 20px;
+    display: flex;
+    gap: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.settings-container select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    min-width: 120px;
+}
+
 .input-container {
     display: flex;
     padding: 20px;
