@@ -5,6 +5,7 @@ class ChatBot {
         this.sendButton = document.getElementById('sendButton');
         this.llmUrl = "http://localhost:1234/v1/chat/completions";
         this.isComposing = false;
+        this.chatHistory = [];
         
         this.initializeEventListeners();
         this.clearInitialMessages();
@@ -39,6 +40,7 @@ class ChatBot {
         if (!message) return;
 
         this.addMessage(message, 'user');
+        this.chatHistory.push({ role: 'user', content: message });
         this.userInput.value = '';
         this.userInput.disabled = true;
         if (this.sendButton) {
@@ -48,7 +50,9 @@ class ChatBot {
         try {
             await this.sendToLLM(message);
         } catch (error) {
-            this.addMessage(`エラーが発生しました: ${error.message}`, 'ai');
+            const errorMessage = `エラーが発生しました: ${error.message}`;
+            this.addMessage(errorMessage, 'ai');
+            this.chatHistory.push({ role: 'assistant', content: errorMessage });
         } finally {
             this.userInput.disabled = false;
             if (this.sendButton) {
@@ -59,22 +63,24 @@ class ChatBot {
     }
 
     async sendToLLM(userMessage) {
+        const messages = [
+            {
+                role: "system",
+                content: "あなたは想像力豊な詩人です。ユーザによって与えられた詩に対して、一行だけ追加するようにしてください。その一行を返信してください。"
+            },
+            ...this.chatHistory
+        ];
+
         const requestData = {
             model: "chat-model-001",
-            messages: [
-                {
-                    role: "system",
-                    content: "あなたは親切で知識豊富なAIアシスタントです。日本語で自然な会話を心がけてください。"
-                },
-                {
-                    role: "user",
-                    content: userMessage
-                }
-            ],
+            messages: messages,
             temperature: 0.7,
             max_tokens: 1024,
-            stream: true
+            stream: false
         };
+
+        console.log('=== LLMへの送信メッセージ ===');
+        console.log(JSON.stringify(requestData, null, 2));
 
         const response = await fetch(this.llmUrl, {
             method: 'POST',
@@ -88,63 +94,28 @@ class ChatBot {
             throw new Error(`APIリクエストに失敗しました: ${response.status} ${response.statusText}`);
         }
 
-        await this.processStream(response);
+        await this.processResponse(response);
     }
 
-    async processStream(response) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let fullText = '';
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message ai-message';
-        
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        
-        const label = document.createElement('span');
-        label.className = 'message-label';
-        label.textContent = 'AI:';
-        
-        const messageText = document.createElement('span');
-        messageText.className = 'message-text';
-        messageText.textContent = '';
-        
-        messageContent.appendChild(label);
-        messageContent.appendChild(messageText);
-        messageDiv.appendChild(messageContent);
-        
-        this.chatMessages.appendChild(messageDiv);
-        this.scrollToBottom();
-
+    async processResponse(response) {
         try {
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                        try {
-                            const data = JSON.parse(line.substring(6));
-                            
-                            if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
-                                const content = data.choices[0].delta.content;
-                                fullText += content;
-                                messageText.textContent = fullText;
-                                this.scrollToBottom();
-                            }
-                        } catch (e) {
-                            console.error('JSON parsing error:', e);
-                        }
-                    }
-                }
+            const data = await response.json();
+            console.log('=== LLMからの受信データ ===');
+            console.log(JSON.stringify(data, null, 2));
+            
+            if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+                const aiMessage = data.choices[0].message.content;
+                console.log('=== AIの完成した応答 ===');
+                console.log(aiMessage);
+                
+                this.addMessage(aiMessage, 'ai');
+                this.chatHistory.push({ role: 'assistant', content: aiMessage });
+            } else {
+                throw new Error('LLMからの応答が空です');
             }
         } catch (error) {
-            console.error('Stream processing error:', error);
-            messageText.textContent = 'ストリーミング処理中にエラーが発生しました。';
+            console.error('Response processing error:', error);
+            throw error;
         }
     }
 
