@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import requests
 import json
 import sys
@@ -12,8 +14,6 @@ SYSTEM_MESSAGE = (
 )
 
 def send_message(word):
-    """指定された英単語に対する辞書プロンプトを作成し、
-    LLMエンドポイントへ送信。ストリーミングでレスポンスを表示する。"""
     dictionary_prompt = (
         f'The user wants to know about the English word: "{word}"\n\n'
         "Please provide:\n"
@@ -22,6 +22,7 @@ def send_message(word):
         "3. two examples of a slightly longer passage using the word (2–3 sentences)\n"
         "4. two sample conversations using the word\n"
         "5. Explain in English when this word should be used."
+        "Reply a plain ascii code text, not mardown style."
     )
     request_data = {
         "model": "dictionary-model-001",
@@ -37,6 +38,8 @@ def send_message(word):
 
     try:
         response = requests.post(LLM_URL, json=request_data, headers=headers, stream=True)
+        # response.encoding を明示的に UTF-8 に設定
+        response.encoding = 'utf-8'
     except Exception as e:
         print(f"APIリクエスト送信中にエラーが発生しました: {e}")
         return ""
