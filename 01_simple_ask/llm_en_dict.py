@@ -22,7 +22,7 @@ def send_message(word):
         "3. two examples of a slightly longer passage using the word (2–3 sentences)\n"
         "4. two sample conversations using the word\n"
         "5. Explain in English when this word should be used."
-        "Reply a plain ascii code text, not mardown style."
+        "Reply a plain text, not mardown style."
     )
     request_data = {
         "model": "dictionary-model-001",
@@ -76,8 +76,7 @@ def main():
     if len(sys.argv) < 2:
         sys.exit(0)
     
-    # 引数をすべて結合して英単語とする（例: "New York" のような複数単語にも対応）
-    word = " ".join(sys.argv[1:]).strip()
+    word = sys.argv[1]
     if not word:
         sys.exit(0)
     
